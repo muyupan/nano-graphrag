@@ -904,8 +904,14 @@ async def _build_local_query_context(
     relations_context = list_of_list_to_csv(relations_section_list)
 
     communities_section_list = [["id", "content"]]
+    #community_report_list = [] #Muyu added 250806
     for i, c in enumerate(use_communities):
         communities_section_list.append([i, c["report_string"]])
+
+	#MP added 250806 
+        #community_report_list.append(c["report_string"])
+    #community_report_summary = '##'.join(community_report_list)
+
     communities_context = list_of_list_to_csv(communities_section_list)
 
     text_units_section_list = [["id", "content"]]
@@ -930,7 +936,7 @@ async def _build_local_query_context(
 {text_units_context}
 ```
 """
-
+    #return community_report_summary
 
 async def local_query(
     query,
@@ -952,6 +958,8 @@ async def local_query(
         query_param,
         tokenizer_wrapper,
     )
+	
+	
     if query_param.only_need_context:
         return context
     if context is None:
@@ -965,7 +973,6 @@ async def local_query(
         system_prompt=sys_prompt,
     )
     return response
-
 
 async def _map_global_communities(
     query: str,
@@ -1029,7 +1036,7 @@ async def global_query(
         k: v for k, v in community_schema.items() if v["level"] <= query_param.level
     }
     if not len(community_schema):
-        return PROMPTS["fail_response"]
+        return {'response': PROMPTS["fail_response"], 'points_context': ''} 
     use_model_func = global_config["best_model_func"]
 
     sorted_community_schemas = sorted(
@@ -1047,7 +1054,7 @@ async def global_query(
     community_datas = [
         c
         for c in community_datas
-        if c["report_json"].get("rating", 0) >= query_param.global_min_community_rating
+        if int(c["report_json"].get("rating", 0)) >= query_param.global_min_community_rating
     ]
     community_datas = sorted(
         community_datas,
@@ -1073,7 +1080,7 @@ async def global_query(
             )
     final_support_points = [p for p in final_support_points if p["score"] > 0]
     if not len(final_support_points):
-        return PROMPTS["fail_response"]
+        return {'response': PROMPTS["fail_response"], 'points_context': ''}
     final_support_points = sorted(
         final_support_points, key=lambda x: x["score"], reverse=True
     )
@@ -1085,15 +1092,16 @@ async def global_query(
     )
     points_context = []
     for dp in final_support_points:
-        points_context.append(
-            f"""----Analyst {dp['analyst']}----
-Importance Score: {dp['score']}
-{dp['answer']}
-"""
-        )
-    points_context = "\n".join(points_context)
+        points_context.append(dp['answer'])
+#            f"""----Analyst {dp['analyst']}----
+#Importance Score: {dp['score']}
+#{dp['answer']}
+#"""
+	#dp['answer']
+        #)        Muyu modified to only keep the retrieved contexts
+    points_context = "\n<<<COMMUNITY_SEPARATOR>>>\n".join(points_context)         
     if query_param.only_need_context:
-        return points_context
+        return {'response': points_context, 'points_context': points_context}
     sys_prompt_temp = PROMPTS["global_reduce_rag_response"]
     response = await use_model_func(
         query,
@@ -1101,7 +1109,8 @@ Importance Score: {dp['score']}
             report_data=points_context, response_type=query_param.response_type
         ),
     )
-    return response
+    return {'response': response,
+	    'points_context': points_context}
 
 
 async def naive_query(
