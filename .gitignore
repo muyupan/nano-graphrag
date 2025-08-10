@@ -190,3 +190,4 @@ docker*
 250803_llama3_8b
 250808_deepseek_llama
 250808_granite_llama
+*.csv
