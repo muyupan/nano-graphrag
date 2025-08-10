@@ -181,3 +181,12 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 
+*.txt
+*.json
+Dockerfile
+docker*
+*documents*
+250803_llama_8b_70b
+250803_llama3_8b
+250808_deepseek_llama
+250808_granite_llama
